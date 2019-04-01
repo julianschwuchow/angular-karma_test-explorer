@@ -52,7 +52,7 @@ export class AngularServer {
     this.logger.log(`Starting Angular tests with arguments: ${cliArgs.join(" ")}`);
 
     this.angularProcess.stdout.on("data", (data: any) => this.logger.log(`stdout: ${data}`));
-    this.angularProcess.stderr.on("data", (data: any) => this.logger.log(`stderr: ${data}`));
+    // this.angularProcess.stderr.on("data", (data: any) => this.logger.log(`stderr: ${data}`));
     this.angularProcess.on("error", (err: any) => this.logger.log(`error from ng child process: ${err}`));
   }
 }

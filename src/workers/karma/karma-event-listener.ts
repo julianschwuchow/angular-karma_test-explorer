@@ -5,6 +5,7 @@ import { KarmaEventName } from "../../model/karma-event-name.enum";
 import { TestState } from "../../model/test-state.enum";
 import { Logger } from "../test-explorer/logger";
 import { EventEmitter } from "../test-explorer/event-emitter";
+import * as WebSocket from "ws";
 
 export class KarmaEventListener {
   public static getInstance() {
@@ -28,35 +29,36 @@ export class KarmaEventListener {
 
   public listenTillKarmaReady(eventEmitter: EventEmitter): Promise<void> {
     return new Promise<void>(resolve => {
-      const app = require("express")();
-      this.server = require("http").createServer(app);
-      const io = require("socket.io")(this.server, { pingInterval: 10, pingTimeout: 240000 });
       const port = 9999;
+      const wss = new WebSocket.Server({ port });
 
-      io.on("connection", (socket: any) => {
-        socket.on(KarmaEventName.BrowserConnected, () => {
-          this.onBrowserConnected(resolve);
-        });
-        socket.on(KarmaEventName.BrowserError, (event: KarmaEvent) => {
-          this.logger.log("browser_error " + event.results);
-        });
-        socket.on(KarmaEventName.BrowserStart, () => {
-          this.savedSpecs = [];
-        });
-        socket.on(KarmaEventName.RunComplete, (event: KarmaEvent) => {
-          this.logger.log("run_complete " + event.results);
-        });
-        socket.on(KarmaEventName.SpecComplete, (event: KarmaEvent) => {
-          this.onSpecComplete(event, eventEmitter);
+      wss.on("connection", (socket: any) => {
+        socket.on("message", (eventObjectAsString: string) => {
+          const event = JSON.parse(eventObjectAsString) as KarmaEvent;
+          switch (event.name) {
+            case KarmaEventName.BrowserConnected:
+              this.onBrowserConnected(resolve);
+              break;
+            case KarmaEventName.BrowserError:
+              this.logger.log("browser_error " + event.results);
+              break;
+            case KarmaEventName.BrowserStart:
+              this.savedSpecs = [];
+              break;
+            case KarmaEventName.RunComplete:
+              this.logger.log("run_complete " + event.results);
+              break;
+            case KarmaEventName.SpecComplete:
+              this.onSpecComplete(event, eventEmitter);
+              break;
+          }
         });
 
-        socket.on("disconnect", (event: any) => {
+        socket.on("close", (event: any) => {
           this.logger.log("AngularReporter closed connection with event: " + event);
         });
-      });
 
-      this.server.listen(port, () => {
-        this.logger.log("Listening to AngularReporter events on port " + port);
+        this.logger.log("AngularReporter connected on port " + port);
       });
     });
   }

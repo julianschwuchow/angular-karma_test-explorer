@@ -2,15 +2,16 @@ import * as karma from "karma";
 import { TestResult } from "../../model/test-status.enum";
 import { RunStatus } from "../../model/run-status.enum";
 import { SpecCompleteResponse } from "../../model/spec-complete-response";
-import * as io from "socket.io-client";
+import * as WebSocket from "ws";
 
 function TestExplorerCustomReporter(this: any, baseReporterDecorator: any, config: any, logger: any, emitter: any, formatError: any) {
   this.config = config;
   this.emitter = emitter;
-  this.socket = io("http://localhost:9999/");
+
+  this.socket = new WebSocket("http://localhost:9999/");
 
   const emitEvent = (eventName: any, eventResults: any = null) => {
-    this.socket.emit(eventName,{name: eventName, results: eventResults});
+    this.socket.send(JSON.stringify({ name: eventName, results: eventResults }));
   };
 
   baseReporterDecorator(this);
